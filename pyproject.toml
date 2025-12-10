@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61.0", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "traffic_sim"
+version = "0.1.0"
+description = "Simulate and compare different traffic control strategies for a 4-leg intersection."
+authors = [
+  { name = "Ori Wang", email = "yijun_wang@g.harvard.edu" },
+  { name = "Yao Xiao", email = "yaoxiao@g.harvard.edu" },
+]
+requires-python = ">=3.12"
+dependencies = ["click>=8.0", "pygame>=2.0"]
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff", "mypy"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.format]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"] # Errors, Formatting, Imports, Bugbear
+ignore = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

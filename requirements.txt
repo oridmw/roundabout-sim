@@ -1,0 +1,5 @@
+click==8.1.7
+pygame==2.5.2
+pytest==7.4.3
+ruff==0.1.6
+mypy==1.7.1
