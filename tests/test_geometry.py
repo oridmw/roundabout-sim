@@ -4,11 +4,10 @@ import math
 
 import pytest
 
-from traffic_sim.config import LANE_OFFSET, ROUNDABOUT_RADIUS, SCALE
+from traffic_sim.config import LANE_OFFSET, ROUNDABOUT_RADIUS
 from traffic_sim.core import Direction, Turn, VehicleBlueprint, VehicleState
 from traffic_sim.geometry import (
     crossroad_position,
-    crossroad_position_with_turn,
     direction_entry_angle,
     exit_heading_for_movement,
     exit_side_for_cross,

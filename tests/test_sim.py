@@ -2,7 +2,7 @@
 
 import pytest
 
-from traffic_sim.core import Direction, Turn, VehicleBlueprint
+from traffic_sim.core import Direction, Turn
 from traffic_sim.intersections import RoundaboutPriorityCirculating
 from traffic_sim.sim import IntersectionSimulation
 
