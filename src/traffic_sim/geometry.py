@@ -1,18 +1,13 @@
-"""Geometric calculations for road and vehicle positioning."""
+"""Coordinate transformations for vehicle positioning in intersection geometries."""
 
 import math
-from typing import Tuple
 
-from traffic_sim.config import (
-    LANE_OFFSET,
-    ROUNDABOUT_RADIUS,
-    SCALE,
-)
+from traffic_sim.config import LANE_OFFSET, ROUNDABOUT_RADIUS, SCALE
 from traffic_sim.core import Direction, Turn, VehicleBlueprint, VehicleState
 
 
 def opposite_direction(d: Direction) -> Direction:
-    """Return the opposite cardinal direction."""
+    """Return the opposing cardinal direction."""
     if d == Direction.NORTH:
         return Direction.SOUTH
     if d == Direction.SOUTH:
@@ -23,9 +18,18 @@ def opposite_direction(d: Direction) -> Direction:
 
 
 def crossroad_position(
-    center: Tuple[int, int], direction: Direction, s_world: float
-) -> Tuple[float, float]:
-    """Calculate basic (x,y) for a straight road given longitudinal s."""
+    center: tuple[int, int], direction: Direction, s_world: float
+) -> tuple[float, float]:
+    """Convert longitudinal coordinate to screen position for straight road segments.
+
+    Args:
+        center: Intersection center in screen coordinates
+        direction: Traffic flow direction
+        s_world: Longitudinal position along road (meters)
+
+    Returns:
+        Screen coordinates (x, y) in pixels
+    """
     cx, cy = center
     if direction == Direction.NORTH:
         x = cx - LANE_OFFSET
@@ -43,7 +47,15 @@ def crossroad_position(
 
 
 def exit_side_for_cross(origin: Direction, turn: Turn) -> Direction:
-    """Determine exit direction based on origin and turn type."""
+    """Determine which road arm a vehicle exits after completing a turn.
+
+    Args:
+        origin: Entry direction
+        turn: Turn maneuver
+
+    Returns:
+        Exit direction (opposing for straight, rotated for turns)
+    """
     if turn == Turn.STRAIGHT:
         return opposite_direction(origin)
 
@@ -57,14 +69,27 @@ def exit_side_for_cross(origin: Direction, turn: Turn) -> Direction:
 
 
 def crossroad_position_with_turn(
-    center: Tuple[int, int], origin: Direction, s_world: float, turn: Turn
-) -> Tuple[float, float]:
-    """Calculate (x,y) for a standard intersection including turns."""
+    center: tuple[int, int], origin: Direction, s_world: float, turn: Turn
+) -> tuple[float, float]:
+    """Map vehicle position to screen coordinates for standard intersection with turns.
+
+    Handles transitions between approach, turning maneuver, and departure segments.
+
+    Args:
+        center: Intersection center in screen coordinates
+        origin: Entry direction
+        s_world: Longitudinal position along vehicle path
+        turn: Turn maneuver
+
+    Returns:
+        Screen coordinates (x, y) in pixels
+    """
     if turn == Turn.STRAIGHT:
         return crossroad_position(center, origin, s_world)
 
     lane_offset_m = LANE_OFFSET / SCALE
 
+    # Define transition points between road segments
     if turn == Turn.RIGHT:
         s_origin_corner = -lane_offset_m
         s_exit_corner = +lane_offset_m
@@ -72,16 +97,25 @@ def crossroad_position_with_turn(
         s_origin_corner = +lane_offset_m
         s_exit_corner = -lane_offset_m
 
+    # Still on approach segment
     if s_world <= s_origin_corner:
         return crossroad_position(center, origin, s_world)
 
+    # On departure segment
     exit_dir = exit_side_for_cross(origin, turn)
     s_on_exit = s_exit_corner + (s_world - s_origin_corner)
     return crossroad_position(center, exit_dir, s_on_exit)
 
 
 def direction_entry_angle(direction: Direction) -> float:
-    """Return angle (radians) where direction enters roundabout."""
+    """Return angle in radians where traffic from a direction enters the roundabout.
+
+    Args:
+        direction: Traffic approach direction
+
+    Returns:
+        Angle in radians (0 = East, counter-clockwise positive)
+    """
     if direction == Direction.EAST:
         return 0.0
     if direction == Direction.SOUTH:
@@ -92,7 +126,14 @@ def direction_entry_angle(direction: Direction) -> float:
 
 
 def turn_step_count(turn: Turn) -> int:
-    """Return number of 90-degree sectors to traverse."""
+    """Return number of 90-degree sectors traversed in roundabout.
+
+    Args:
+        turn: Turn maneuver
+
+    Returns:
+        Number of quadrants (1=right, 2=straight, 3=left)
+    """
     if turn == Turn.RIGHT:
         return 1
     if turn == Turn.STRAIGHT:
@@ -101,7 +142,15 @@ def turn_step_count(turn: Turn) -> int:
 
 
 def exit_heading_for_movement(origin: Direction, turn: Turn) -> Direction:
-    """Return the compass direction of the exit arm."""
+    """Determine compass heading of the departure road arm.
+
+    Args:
+        origin: Entry direction
+        turn: Turn maneuver
+
+    Returns:
+        Direction of the exit road
+    """
     order = [Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST]
     idx = order.index(origin)
     steps = turn_step_count(turn)
@@ -110,7 +159,14 @@ def exit_heading_for_movement(origin: Direction, turn: Turn) -> Direction:
 
 
 def roundabout_vehicle_angle(v: VehicleState) -> float:
-    """Return angular position (theta) in roundabout."""
+    """Calculate angular position of vehicle within roundabout ring.
+
+    Args:
+        v: Vehicle state
+
+    Returns:
+        Angle in radians, or -999.0 if vehicle is not in the circular segment
+    """
     bp = v.blueprint
     if v.s <= 0.0 or v.s > bp.intersection_exit_s:
         return -999.0  # Sentinel for "not in ring"
@@ -123,15 +179,26 @@ def roundabout_vehicle_angle(v: VehicleState) -> float:
 
 
 def roundabout_vehicle_position(
-    center: Tuple[int, int], direction: Direction, vehicle: VehicleState
-) -> Tuple[float, float]:
-    """Calculate (x,y) for vehicle in roundabout geometry."""
+    center: tuple[int, int], direction: Direction, vehicle: VehicleState
+) -> tuple[float, float]:
+    """Map vehicle position to screen coordinates for roundabout geometry.
+
+    Handles three segments: approach tangent, circular ring, and departure tangent.
+
+    Args:
+        center: Roundabout center in screen coordinates
+        direction: Entry direction
+        vehicle: Vehicle state
+
+    Returns:
+        Screen coordinates (x, y) in pixels
+    """
     bp: VehicleBlueprint = vehicle.blueprint
     s = vehicle.s
     cx, cy = center
     tangent_dist = math.sqrt(ROUNDABOUT_RADIUS**2 - LANE_OFFSET**2)
 
-    # Approach
+    # Approach segment
     if s <= 0.0:
         if direction == Direction.NORTH:
             x = cx - LANE_OFFSET
@@ -147,7 +214,7 @@ def roundabout_vehicle_position(
             y = cy + LANE_OFFSET
         return x, y
 
-    # Inside Ring
+    # Circular ring segment
     if s <= bp.intersection_exit_s:
         theta_entry = direction_entry_angle(direction)
         steps = turn_step_count(bp.turn)
@@ -157,7 +224,7 @@ def roundabout_vehicle_position(
         y = cy + ROUNDABOUT_RADIUS * math.sin(theta)
         return x, y
 
-    # Exit
+    # Departure segment
     s_exit = s - bp.intersection_exit_s
     exit_dir = exit_heading_for_movement(direction, bp.turn)
 
