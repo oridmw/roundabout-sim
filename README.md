@@ -1,6 +1,6 @@
 # Traffic Simulator
 
-> Harvard AM205 Final Project (Fall 2025)
+> Harvard AM215 Final Project (Fall 2025)
 
 To set up the project, create a virtual environment and install the required packages:
 
