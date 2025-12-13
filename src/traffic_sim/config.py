@@ -1,13 +1,13 @@
-"""Configuration constants for the traffic simulation."""
+"""Configuration constants for traffic simulation parameters and rendering."""
 
-# Window & Rendering
+# Display settings
 WINDOW_WIDTH = 1280
 WINDOW_HEIGHT = 800
 FPS = 60
-SCALE = 2.0  # pixels per "meter"
-LANE_OFFSET = 8.0  # lateral lane offset (pixels)
+SCALE = 2.0  # pixels per meter
+LANE_OFFSET = 8.0  # lateral lane offset in pixels
 
-# Colors
+# Color definitions (RGB)
 BACKGROUND_COLOR = (30, 30, 30)
 ROAD_COLOR = (60, 60, 60)
 ROAD_EDGE_COLOR = (100, 100, 100)
@@ -17,7 +17,7 @@ TEXT_COLOR = (230, 230, 230)
 SIGNAL_GREEN = (0, 180, 0)
 SIGNAL_RED = (200, 0, 0)
 
-# Geometry (Abstract Units "Meters")
+# Road geometry (meters unless specified)
 APPROACH_LENGTH = 80.0
 EXIT_LENGTH = 60.0
 SPAWN_S = -APPROACH_LENGTH
@@ -28,7 +28,7 @@ EXIT_S = EXIT_LENGTH
 BASE_INTERSECTION_S = 12.0
 ROUNDABOUT_RADIUS = 55.0  # pixels
 
-# Vehicle Physics
+# Vehicle dynamics
 VEHICLE_LENGTH = 4.0
 MIN_GAP = 2.0
 DEFAULT_DESIRED_SPEED = 12.0
@@ -38,5 +38,5 @@ DEFAULT_GAP_ACCEPT_MEAN = 2.0
 DEFAULT_GAP_ACCEPT_STD = 0.5
 INF = 1e9
 
-# Simulation Limits
+# Simulation constraints
 MAX_QUEUE_PER_DIRECTION = 2000

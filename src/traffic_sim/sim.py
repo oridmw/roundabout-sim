@@ -1,8 +1,7 @@
-"""Simulation engine managing multiple intersection models."""
+"""Simulation orchestrator managing vehicle generation and intersection models."""
 
 import math
 import random
-from typing import List
 
 from traffic_sim.config import (
     BASE_INTERSECTION_S,
@@ -31,11 +30,25 @@ from traffic_sim.intersections import (
 
 
 class IntersectionSimulation:
-    """Manages all intersection models and shared vehicle generation."""
+    """Coordinates vehicle generation and updates across multiple intersection models.
+
+    Manages stochastic vehicle arrivals from all directions and distributes
+    identical vehicle instances to each intersection model for fair comparison.
+    """
 
     def __init__(
-        self, models: List[IntersectionModel], arrival_rates: dict, rng: random.Random
+        self,
+        models: list[IntersectionModel],
+        arrival_rates: dict[Direction, float],
+        rng: random.Random,
     ):
+        """Initialize simulation with intersection models and traffic demand.
+
+        Args:
+            models: List of intersection models to simulate in parallel
+            arrival_rates: Poisson arrival rates per direction (vehicles/second)
+            rng: Random number generator for reproducibility
+        """
         self.models = models
         self.arrival_rates = arrival_rates
         self.rng = rng
@@ -43,20 +56,34 @@ class IntersectionSimulation:
         self.next_vehicle_id = 0
 
     def update(self, dt: float) -> None:
+        """Advance simulation by one timestep.
+
+        Args:
+            dt: Timestep duration in seconds
+        """
         self.sim_time += dt
 
+        # Stochastic vehicle generation for each direction
         for direction in DIRECTIONS:
             lam = self.arrival_rates[direction]
             if lam <= 0.0:
                 continue
+
+            # Bernoulli trial approximation of Poisson process
             p = lam * dt
             if self.rng.random() < p:
                 self._spawn_vehicle(direction)
 
+        # Propagate all models forward
         for model in self.models:
             model.step(dt, self.sim_time)
 
     def _sample_turn(self) -> Turn:
+        """Sample turn maneuver from uniform distribution.
+
+        Returns:
+            Turn direction with equal probability
+        """
         r = self.rng.random()
         if r < 1.0 / 3.0:
             return Turn.RIGHT
@@ -66,24 +93,40 @@ class IntersectionSimulation:
             return Turn.LEFT
 
     def _intersection_exit_s_for_turn(self, turn: Turn, use_roundabout: bool) -> float:
+        """Calculate path length through intersection for a given turn.
+
+        Args:
+            turn: Turn maneuver
+            use_roundabout: Whether intersection has roundabout geometry
+
+        Returns:
+            Longitudinal distance to exit point in meters
+        """
         if use_roundabout:
             radius_meters = ROUNDABOUT_RADIUS / SCALE
             if turn == Turn.RIGHT:
                 return radius_meters * (math.pi / 2.0)
             elif turn == Turn.STRAIGHT:
                 return radius_meters * math.pi
-            else:
+            else:  # Turn.LEFT
                 return radius_meters * (3.0 * math.pi / 2.0)
         else:
             if turn == Turn.RIGHT:
                 return BASE_INTERSECTION_S
             elif turn == Turn.STRAIGHT:
                 return 2.0 * BASE_INTERSECTION_S
-            else:
+            else:  # Turn.LEFT
                 return 3.0 * BASE_INTERSECTION_S
 
     def _spawn_vehicle(self, direction: Direction) -> None:
+        """Generate new vehicle and add to all intersection models.
+
+        Args:
+            direction: Approach direction for new vehicle
+        """
         arrival_time = self.sim_time
+
+        # Sample vehicle characteristics from distributions
         desired_speed = max(
             self.rng.gauss(DEFAULT_DESIRED_SPEED, DEFAULT_DESIRED_SPEED_STD), 3.0
         )
@@ -93,9 +136,11 @@ class IntersectionSimulation:
         )
         turn = self._sample_turn()
 
+        # Compute free-flow travel time for delay calculation
         path_length = EXIT_S - SPAWN_S
         free_flow_time = path_length / desired_speed
 
+        # Add identical vehicle to all models for fair comparison
         for model in self.models:
             use_roundabout = isinstance(
                 model, (RoundaboutPriorityCirculating, RoundaboutPriorityEntering)
@@ -116,6 +161,7 @@ class IntersectionSimulation:
                 intersection_exit_s=intersection_exit_s,
             )
 
+            # Respect queue capacity limits
             if len(model.lanes[direction]) < MAX_QUEUE_PER_DIRECTION:
                 model.spawn_vehicle(bp)
 

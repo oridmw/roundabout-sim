@@ -1,4 +1,4 @@
-"""Command Line Interface and Main Loop."""
+"""Command-line interface and main event loop for traffic intersection simulation."""
 
 import random
 
@@ -23,15 +23,54 @@ from traffic_sim.sim import IntersectionSimulation
 
 
 @click.command()
-@click.option("--rate-north", default=1200.0, show_default=True)
-@click.option("--rate-south", default=1200.0, show_default=True)
-@click.option("--rate-east", default=1200.0, show_default=True)
-@click.option("--rate-west", default=1200.0, show_default=True)
-@click.option("--sim-speed", default=2.0, show_default=True)
-@click.option("--seed", default=0, show_default=True)
-@click.option("--cycle-length", default=60.0, show_default=True)
-@click.option("--green-ns", default=30.0, show_default=True)
-@click.option("--green-ew", default=30.0, show_default=True)
+@click.option(
+    "--rate-north",
+    default=800.0,
+    show_default=True,
+    help="Arrival rate from north (veh/hr)",
+)
+@click.option(
+    "--rate-south",
+    default=800.0,
+    show_default=True,
+    help="Arrival rate from south (veh/hr)",
+)
+@click.option(
+    "--rate-east",
+    default=800.0,
+    show_default=True,
+    help="Arrival rate from east (veh/hr)",
+)
+@click.option(
+    "--rate-west",
+    default=800.0,
+    show_default=True,
+    help="Arrival rate from west (veh/hr)",
+)
+@click.option(
+    "--sim-speed", default=2.0, show_default=True, help="Simulation speed multiplier"
+)
+@click.option(
+    "--seed", default=0, show_default=True, help="Random seed for reproducibility"
+)
+@click.option(
+    "--cycle-length",
+    default=60.0,
+    show_default=True,
+    help="Signal cycle length (seconds)",
+)
+@click.option(
+    "--green-ns",
+    default=30.0,
+    show_default=True,
+    help="Green time for north-south (seconds)",
+)
+@click.option(
+    "--green-ew",
+    default=30.0,
+    show_default=True,
+    help="Green time for east-west (seconds)",
+)
 def main(
     rate_north: float,
     rate_south: float,
@@ -43,9 +82,19 @@ def main(
     green_ns: float,
     green_ew: float,
 ) -> None:
-    """Run the interactive GUI simulation."""
+    """Run interactive GUI comparing four intersection control strategies.
+
+    Simulates identical traffic demand across four intersection types:
+    - Roundabout with circulating priority (standard)
+    - Roundabout with entering priority (non-standard)
+    - Fixed-time traffic signal
+    - All-way stop control
+
+    Press SPACE to pause/resume. Close window to exit.
+    """
     rng = random.Random(seed)
 
+    # Convert hourly rates to per-second rates
     arrival_rates = {
         Direction.NORTH: rate_north / 3600.0,
         Direction.SOUTH: rate_south / 3600.0,
@@ -59,6 +108,7 @@ def main(
     clock = pygame.time.Clock()
     font = pygame.font.SysFont("Arial", 16)
 
+    # Position four intersections in 2x2 grid
     centers = [
         (WINDOW_WIDTH // 4, WINDOW_HEIGHT // 4),
         (3 * WINDOW_WIDTH // 4, WINDOW_HEIGHT // 4),
